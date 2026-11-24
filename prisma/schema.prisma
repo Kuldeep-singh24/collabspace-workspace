@@ -1,0 +1,79 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  VIEWER
+  COMMENTER
+  EDITOR
+  ADMIN
+}
+
+model User {
+  id        String       @id @default(uuid())
+  email     String       @unique
+  name      String
+  password  String
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  members   Membership[]
+  pages     Page[]       @relation("CreatedPages")
+  comments  Comment[]
+}
+
+model Workspace {
+  id        String       @id @default(uuid())
+  name      String
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  members   Membership[]
+  pages     Page[]
+}
+
+model Membership {
+  id          String    @id @default(uuid())
+  role        Role      @default(EDITOR)
+  userId      String
+  workspaceId String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workspaceId])
+}
+
+model Page {
+  id          String            @id @default(uuid())
+  title       String            @default("Untitled")
+  content     String?           @db.Text
+  workspaceId String
+  authorId    String
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  workspace   Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  author      User              @relation("CreatedPages", fields: [authorId], references: [id], onDelete: Cascade)
+  comments    Comment[]
+  snapshots   VersionSnapshot[]
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  content   String
+  pageId    String
+  authorId  String
+  createdAt DateTime @default(now())
+  page      Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+}
+
+model VersionSnapshot {
+  id        String   @id @default(uuid())
+  content   String   @db.Text
+  pageId    String
+  createdAt DateTime @default(now())
+  page      Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+}
